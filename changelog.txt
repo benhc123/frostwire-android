@@ -1,3 +1,8 @@
+FrostWire 2.0.0 - OCTOBER/10/2014
+ - New faster and more memory efficient Bittorrent search and downloads,
+ old Vuze torrent engine replaced for frostwire-jlibtorrent library.
+ - Multiple bug fixes and crashes fixed.
+
 FrostWire 1.3.8 - SEPTEMBER/18/2014
  - Fixes issue where FrostWire would think a Wi-Fi shared file belonged 
    to a removed SD card.
