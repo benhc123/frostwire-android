@@ -67,6 +67,7 @@ public class MainApplication extends Application {
 
         com.frostwire.android.util.ImageLoader.getInstance(this);
         CrawlPagedWebSearchPerformer.setCache(new DiskCrawlCache(this));
+        CrawlPagedWebSearchPerformer.setMagnetDownloader(new LibTorrentMagnetDownloader());
 
         try {
 

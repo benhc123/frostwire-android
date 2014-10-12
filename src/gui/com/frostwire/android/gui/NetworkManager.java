@@ -126,8 +126,8 @@ public final class NetworkManager {
 
     public boolean isDataMobileUp() {
         ConnectivityManager connectivityManager = getConnectivityManager();
-        NetworkInfo networkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-        return networkInfo != null && networkInfo.isAvailable() && networkInfo.isConnected();
+        NetworkInfo info = connectivityManager.getActiveNetworkInfo();
+        return info != null && info.getType() == ConnectivityManager.TYPE_MOBILE && info.isAvailable() && info.isConnected();
     }
 
     public boolean isData3GUp() {

@@ -172,16 +172,17 @@ public final class TransferManager implements VuzeKeys {
         return r;
     }
 
-    private void enqueueTorrentTransfer(DownloadTransfer transfer) {
-        if (transfer instanceof AzureusBittorrentDownload) {
-            AzureusBittorrentDownload btDownload = (AzureusBittorrentDownload) transfer;
-            btDownload.enqueue();
-        } else if (transfer instanceof TorrentFetcherDownload) {
-            TorrentFetcherDownload btDownload = (TorrentFetcherDownload) transfer;
-            // TODO:BITTORRENT
-            //btDownload.enqueue();
-        }
-    }
+    // TODO:BITTORRENT
+//    private void enqueueTorrentTransfer(DownloadTransfer transfer) {
+//        if (transfer instanceof AzureusBittorrentDownload) {
+//            AzureusBittorrentDownload btDownload = (AzureusBittorrentDownload) transfer;
+//            btDownload.enqueue();
+//        } else if (transfer instanceof TorrentFetcherDownload) {
+//            TorrentFetcherDownload btDownload = (TorrentFetcherDownload) transfer;
+//            // TODO:BITTORRENT
+//            //btDownload.enqueue();
+//        }
+//    }
 
 
     public DownloadTransfer download(Peer peer, FileDescriptor fd) {
@@ -312,16 +313,6 @@ public final class TransferManager implements VuzeKeys {
                 stop = true;
             }
         }
-
-        VuzeManager.getInstance().loadTorrents(stop, new LoadTorrentsListener() {
-
-            @Override
-            public void onLoad(List<VuzeDownloadManager> dms) {
-                for (VuzeDownloadManager dm : dms) {
-                    bittorrentDownloads.add(new AzureusBittorrentDownload(TransferManager.this, dm));
-                }
-            }
-        }, new DownloadListener());
 
         BTEngine engine = BTEngine.getInstance();
 
@@ -480,7 +471,7 @@ public final class TransferManager implements VuzeKeys {
     }
 
     private boolean isBittorrentDownload(DownloadTransfer transfer) {
-        return transfer instanceof AzureusBittorrentDownload || transfer instanceof TorrentFetcherDownload;
+        return transfer instanceof BittorrentDownload;
     }
 
     public boolean isBittorrentDownloadAndMobileDataSavingsOn(DownloadTransfer transfer) {
@@ -559,41 +550,6 @@ public final class TransferManager implements VuzeKeys {
 
     private void setAzureusParameter(String key) {
         VuzeManager.getInstance().setParameter(key, ConfigurationManager.instance().getLong(key));
-    }
-
-    VuzeDownloadManager createVDM(String path, Set<String> selection) throws IOException {
-        VuzeDownloadManager dm = VuzeDownloadFactory.create(path, selection, SystemUtils.getTorrentDataDirectory().getAbsolutePath(), new DownloadListener());
-
-        return dm;
-    }
-
-    private static class DownloadListener implements VuzeDownloadListener {
-
-        @Override
-        public void stateChanged(VuzeDownloadManager dm, int state) {
-            if (state == VuzeDownloadManager.STATE_SEEDING) {
-                stopSeedingIfNecessary(dm);
-            }
-        }
-
-        @Override
-        public void downloadComplete(VuzeDownloadManager dm) {
-            stopSeedingIfNecessary(dm);
-            TransferManager.instance().incrementDownloadsToReview();
-            // TODO:BITTORRENT
-            //VuzeUtils.finalCleanup(dm.getDM()); //make sure it cleans unnecessary files (android has handpicked seeding off by default)
-            Engine.instance().notifyDownloadFinished(dm.getDisplayName(), dm.getSavePath().getAbsoluteFile());
-            Librarian.instance().scan(dm.getSavePath().getAbsoluteFile());
-        }
-
-        private void stopSeedingIfNecessary(VuzeDownloadManager dm) {
-            boolean seedFinishedTorrents = ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_TORRENT_SEED_FINISHED_TORRENTS);
-            boolean seedFinishedTorrentsOnWifiOnly = ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_TORRENT_SEED_FINISHED_TORRENTS_WIFI_ONLY);
-            boolean isDataWIFIUp = NetworkManager.instance().isDataWIFIUp();
-            if (!seedFinishedTorrents || (!isDataWIFIUp && seedFinishedTorrentsOnWifiOnly)) {
-                dm.stop();
-            }
-        }
     }
 
     public enum TransferResult {
