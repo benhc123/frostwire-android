@@ -23,15 +23,12 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import com.frostwire.android.core.ConfigurationManager;
 import com.frostwire.android.core.Constants;
 import com.frostwire.android.core.FileDescriptor;
-import com.frostwire.android.gui.Librarian;
 import com.frostwire.android.gui.NetworkManager;
 import com.frostwire.android.gui.Peer;
 import com.frostwire.android.gui.services.Engine;
-import com.frostwire.android.gui.util.SystemUtils;
 import com.frostwire.bittorrent.BTDownload;
 import com.frostwire.bittorrent.BTEngine;
 import com.frostwire.bittorrent.BTEngineAdapter;
-import com.frostwire.bittorrent.BTEngineListener;
 import com.frostwire.jlibtorrent.Sha1Hash;
 import com.frostwire.jlibtorrent.TorrentHandle;
 import com.frostwire.logging.Logger;
@@ -48,15 +45,13 @@ import com.frostwire.transfers.UploadTransfer;
 import com.frostwire.util.StringUtils;
 import com.frostwire.uxstats.UXAction;
 import com.frostwire.uxstats.UXStats;
-import com.frostwire.vuze.*;
-import com.frostwire.vuze.VuzeManager.LoadTorrentsListener;
+import com.frostwire.vuze.VuzeKeys;
+import com.frostwire.vuze.VuzeManager;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -551,6 +546,21 @@ public final class TransferManager implements VuzeKeys {
 
     private void setAzureusParameter(String key) {
         VuzeManager.getInstance().setParameter(key, ConfigurationManager.instance().getLong(key));
+    }
+
+    public boolean canRunBittorrent() {
+        if (!NetworkManager.instance().isDataUp()) {
+            return false;
+        }
+
+        boolean mobileUp = NetworkManager.instance().isDataMobileUp();
+        boolean useMobileData = ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_NETWORK_USE_MOBILE_DATA);
+
+        if (mobileUp && !useMobileData) {
+            return false;
+        }
+
+        return true;
     }
 
     public enum TransferResult {

@@ -82,11 +82,7 @@ public final class EngineBroadcastReceiver extends BroadcastReceiver {
             } else if (action.equals(Intent.ACTION_MEDIA_SCANNER_FINISHED)) {
                 Librarian.instance().syncMediaStore();
             } else if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
-                if (NetworkManager.instance().isDataUp()) {
-                    handleConnectedNetwork();
-                } else {
-                    handleDisconnectedNetwork();
-                }
+                handleConnectivityAction();
             } else if (action.equals(AudioManager.ACTION_AUDIO_BECOMING_NOISY)) {
                 if (Engine.instance().getMediaPlayer().isPlaying()) {
                     Engine.instance().getMediaPlayer().togglePause();
@@ -121,6 +117,14 @@ public final class EngineBroadcastReceiver extends BroadcastReceiver {
                 wasPlaying = false;
                 mediaPlayer.togglePause();
             }
+        }
+    }
+
+    private void handleConnectivityAction() {
+        if (NetworkManager.instance().isDataUp()) {
+            handleConnectedNetwork();
+        } else {
+            handleDisconnectedNetwork();
         }
     }
 
