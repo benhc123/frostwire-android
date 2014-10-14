@@ -30,6 +30,7 @@ import com.frostwire.android.gui.services.Engine;
 import com.frostwire.android.gui.util.SystemUtils;
 import com.frostwire.bittorrent.BTDownload;
 import com.frostwire.bittorrent.BTEngine;
+import com.frostwire.bittorrent.BTEngineAdapter;
 import com.frostwire.bittorrent.BTEngineListener;
 import com.frostwire.jlibtorrent.Sha1Hash;
 import com.frostwire.jlibtorrent.TorrentHandle;
@@ -316,9 +317,9 @@ public final class TransferManager implements VuzeKeys {
 
         BTEngine engine = BTEngine.getInstance();
 
-        engine.setListener(new BTEngineListener() {
+        engine.setListener(new BTEngineAdapter() {
             @Override
-            public void downloadAdded(BTDownload dl) {
+            public void downloadAdded(BTEngine engine, BTDownload dl) {
                 String name = dl.getName();
                 if (name != null && name.contains("fetchMagnet - ")) {
                     return;
