@@ -18,17 +18,16 @@
 
 package com.frostwire.android.gui.httpserver;
 
+import com.frostwire.android.gui.NetworkManager;
+import com.sun.net.httpserver.HttpServer;
+
 import java.net.InetSocketAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.frostwire.android.gui.NetworkManager;
-import com.sun.net.httpserver.HttpServer;
-
 /**
  * @author gubatron
  * @author aldenml
- *
  */
 public class HttpServerManager {
 
@@ -55,8 +54,11 @@ public class HttpServerManager {
             httpServer.createContext("/finger", new FingerHandler());
             httpServer.createContext("/browse", new BrowseHandler());
             httpServer.createContext("/download", new DownloadHandler());
+            httpServer.createContext("/status", new StatusHandler());
 
             httpServer.start();
+
+            LOG.info("HTTP server status at: http://" + NetworkManager.instance().getWifiIpAddress() + ":" + port + "/status");
 
         } catch (Throwable e) {
             LOG.log(Level.WARNING, "Failed to start http server", e);

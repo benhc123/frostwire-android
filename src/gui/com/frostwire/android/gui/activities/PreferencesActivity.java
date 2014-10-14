@@ -19,19 +19,13 @@
 package com.frostwire.android.gui.activities;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.preference.CheckBoxPreference;
-import android.preference.EditTextPreference;
-import android.preference.Preference;
+import android.preference.*;
 import android.preference.Preference.OnPreferenceChangeListener;
-import android.preference.PreferenceActivity;
-import android.preference.PreferenceScreen;
 import android.view.View;
 import android.view.View.OnClickListener;
-
 import com.frostwire.android.R;
 import com.frostwire.android.core.ConfigurationManager;
 import com.frostwire.android.core.Constants;
@@ -39,21 +33,20 @@ import com.frostwire.android.gui.LocalSearchEngine;
 import com.frostwire.android.gui.NetworkManager;
 import com.frostwire.android.gui.PeerManager;
 import com.frostwire.android.gui.SearchEngine;
-import com.frostwire.android.gui.services.Engine;
 import com.frostwire.android.gui.transfers.TransferManager;
 import com.frostwire.android.gui.util.UIUtils;
 import com.frostwire.android.gui.views.preference.SimpleActionPreference;
 import com.frostwire.android.gui.views.preference.StoragePreference;
 import com.frostwire.android.util.StringUtils;
+import com.frostwire.bittorrent.BTEngine;
 import com.frostwire.uxstats.UXAction;
 import com.frostwire.uxstats.UXStats;
 
 /**
  * See {@link ConfigurationManager}
- * 
+ *
  * @author gubatron
  * @author aldenml
- *
  */
 public class PreferencesActivity extends PreferenceActivity {
 
@@ -70,7 +63,7 @@ public class PreferencesActivity extends PreferenceActivity {
         setupSearchEngines();
         setupUPnPOption();
         setupUXStatsOption();
-        
+
         String action = getIntent().getAction();
         if (action != null && action.equals(Constants.ACTION_SETTINGS_SELECT_STORAGE)) {
             getIntent().setAction(null);
@@ -79,13 +72,13 @@ public class PreferencesActivity extends PreferenceActivity {
     }
 
     private void invokeStoragePreference() {
-		final StoragePreference storagePreference = (StoragePreference) findPreference(Constants.PREF_KEY_STORAGE_PATH);
-		if (storagePreference != null) {
-			storagePreference.showDialog(null);
-		}
-	}
+        final StoragePreference storagePreference = (StoragePreference) findPreference(Constants.PREF_KEY_STORAGE_PATH);
+        if (storagePreference != null) {
+            storagePreference.showDialog(null);
+        }
+    }
 
-	private void setupSeedingOptions() {
+    private void setupSeedingOptions() {
         final CheckBoxPreference preferenceSeeding = (CheckBoxPreference) findPreference(Constants.PREF_KEY_TORRENT_SEED_FINISHED_TORRENTS);
         final CheckBoxPreference preferenceSeedingWifiOnly = (CheckBoxPreference) findPreference(Constants.PREF_KEY_TORRENT_SEED_FINISHED_TORRENTS_WIFI_ONLY);
 
@@ -141,7 +134,7 @@ public class PreferencesActivity extends PreferenceActivity {
     }
 
     private void setupSearchEngines() {
-    	PreferenceScreen category = (PreferenceScreen) findPreference(Constants.PREF_KEY_SEARCH_PREFERENCE_CATEGORY);
+        PreferenceScreen category = (PreferenceScreen) findPreference(Constants.PREF_KEY_SEARCH_PREFERENCE_CATEGORY);
         for (SearchEngine engine : SearchEngine.getEngines()) {
             CheckBoxPreference preference = (CheckBoxPreference) findPreference(engine.getPreferenceKey());
             if (!engine.isActive()) {
@@ -157,12 +150,10 @@ public class PreferencesActivity extends PreferenceActivity {
 
     private void updateConnectButton() {
         SimpleActionPreference preference = (SimpleActionPreference) findPreference("frostwire.prefs.internal.connect_disconnect");
-        if (Engine.instance().isStarted()) {
+        if (BTEngine.getInstance().isStarted()) {
             preference.setButtonText(R.string.disconnect);
             preference.setButtonEnabled(true);
-        } else if (Engine.instance().isStarting() || Engine.instance().isStopping()) {
-            connectButtonImOnIt(preference);
-        } else if (Engine.instance().isStopped() || Engine.instance().isDisconnected()) {
+        } else {
             preference.setButtonText(R.string.connect);
             preference.setButtonEnabled(true);
         }
@@ -195,9 +186,9 @@ public class PreferencesActivity extends PreferenceActivity {
 
         preference.setOnActionListener(new OnClickListener() {
             public void onClick(View v) {
-                if (Engine.instance().isStarted()) {
+                if (BTEngine.getInstance().isStarted()) {
                     disconnect();
-                } else if (Engine.instance().isStopped() || Engine.instance().isDisconnected()) {
+                } else {
                     connect();
                 }
             }
@@ -223,8 +214,6 @@ public class PreferencesActivity extends PreferenceActivity {
         AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
-                Engine.instance().startServices();
-                
                 context.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -232,8 +221,8 @@ public class PreferencesActivity extends PreferenceActivity {
                         connectButtonImOnIt(preference);
                     }
                 });
-                
-                PeerManager.instance().start();
+
+                BTEngine.getInstance().start();
                 return null;
             }
 
@@ -253,11 +242,19 @@ public class PreferencesActivity extends PreferenceActivity {
     }
 
     private void disconnect() {
-        final Context context = this;
+        final Activity context = this;
         AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
-                Engine.instance().stopServices(true);
+                context.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        SimpleActionPreference preference = (SimpleActionPreference) findPreference("frostwire.prefs.internal.connect_disconnect");
+                        connectButtonImOnIt(preference);
+                    }
+                });
+
+                BTEngine.getInstance().stop();
                 return null;
             }
 

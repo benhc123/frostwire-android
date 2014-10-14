@@ -19,6 +19,7 @@
 package com.frostwire.android.gui;
 
 import android.app.Application;
+import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
@@ -29,6 +30,7 @@ import com.frostwire.util.ByteUtils;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * @author gubatron
@@ -84,7 +86,12 @@ public final class NetworkManager {
     }
 
     public WifiManager getWifiManager() {
-        return (WifiManager) context.getSystemService(Application.WIFI_SERVICE);
+        return (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+    }
+
+    public String getWifiIpAddress() {
+        WifiManager manager = getWifiManager();
+        return intToInetAddress(manager.getConnectionInfo().getIpAddress()).getHostAddress();
     }
 
     public InetAddress getMulticastInetAddress() throws IOException {
@@ -94,9 +101,31 @@ public final class NetworkManager {
         return InetAddress.getByAddress(byteaddr);
     }
 
+    public NetworkInfo getActiveNetworkInfo() {
+        ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Application.CONNECTIVITY_SERVICE);
+        return manager != null ? manager.getActiveNetworkInfo() : null;
+    }
+
     private boolean isDataUp(int type) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Application.CONNECTIVITY_SERVICE);
-        NetworkInfo info = connectivityManager.getActiveNetworkInfo();
+        NetworkInfo info = getActiveNetworkInfo();
         return info != null && info.getType() == type && info.isAvailable() && info.isConnected();
+    }
+
+    /**
+     * Convert a IPv4 address from an integer to an InetAddress.
+     *
+     * @param hostAddress an int corresponding to the IPv4 address in network byte order
+     */
+    private static InetAddress intToInetAddress(int hostAddress) {
+        byte[] addressBytes = {(byte) (0xff & hostAddress),
+                (byte) (0xff & (hostAddress >> 8)),
+                (byte) (0xff & (hostAddress >> 16)),
+                (byte) (0xff & (hostAddress >> 24))};
+
+        try {
+            return InetAddress.getByAddress(addressBytes);
+        } catch (UnknownHostException e) {
+            throw new AssertionError();
+        }
     }
 }

@@ -18,41 +18,38 @@
 
 package com.frostwire.android.gui.services;
 
-import java.io.File;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.NetworkInfo.DetailedState;
 import android.os.Environment;
 import android.telephony.TelephonyManager;
-import android.util.Log;
-
 import com.frostwire.android.core.ConfigurationManager;
 import com.frostwire.android.core.Constants;
 import com.frostwire.android.core.player.CoreMediaPlayer;
 import com.frostwire.android.gui.Librarian;
 import com.frostwire.android.gui.NetworkManager;
 import com.frostwire.android.gui.UniversalScanner;
-import com.frostwire.android.gui.transfers.TransferManager;
 import com.frostwire.android.util.SystemUtils;
+import com.frostwire.logging.Logger;
+
+import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Receives and controls messages from the external world. Depending on the
  * status it attempts to control what happens with the Engine.
- * 
+ *
  * @author gubatron
  * @author aldenml
- *
  */
-public class EngineBroadcastReceiver extends BroadcastReceiver {
+public final class EngineBroadcastReceiver extends BroadcastReceiver {
 
-    private static final String TAG = "FW.EngineBroadcastReceiver";
+    private static final Logger LOG = Logger.getLogger(EngineBroadcastReceiver.class);
+
+    private boolean connected;
 
     private final ExecutorService engineExecutor;
 
@@ -85,12 +82,10 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
             } else if (action.equals(Intent.ACTION_MEDIA_SCANNER_FINISHED)) {
                 Librarian.instance().syncMediaStore();
             } else if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
-                NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
-
-                if (networkInfo.getDetailedState() == DetailedState.DISCONNECTED) {
-                    handleDisconnectedNetwork(networkInfo);
-                } else if (networkInfo.getDetailedState() == DetailedState.CONNECTED) {
-                    handleConnectedNetwork(networkInfo);
+                if (NetworkManager.instance().isDataUp()) {
+                    handleConnectedNetwork();
+                } else {
+                    handleDisconnectedNetwork();
                 }
             } else if (action.equals(AudioManager.ACTION_AUDIO_BECOMING_NOISY)) {
                 if (Engine.instance().getMediaPlayer().isPlaying()) {
@@ -103,18 +98,18 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
             }
 
             if (!Librarian.instance().isExternalStorageMounted()) {
-                Log.v(TAG, "Halting process due to lack of external storage");
+                LOG.error("Halting process due to lack of external storage");
                 Librarian.instance().halt();
             }
         } catch (Throwable e) {
-            Log.e(TAG, "Error processing broadcast message", e);
+            LOG.error("Error processing broadcast message", e);
         }
     }
 
     private void handleActionPhoneStateChanged(Intent intent) {
         String state = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
         String msg = "Phone state changed to " + state;
-        Log.v(TAG, msg);
+        LOG.info(msg);
 
         if (TelephonyManager.EXTRA_STATE_RINGING.equals(state) || TelephonyManager.EXTRA_STATE_OFFHOOK.equals(state) || TelephonyManager.EXTRA_STATE_IDLE.equals(state)) {
             CoreMediaPlayer mediaPlayer = Engine.instance().getMediaPlayer();
@@ -129,9 +124,14 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
         }
     }
 
-    private void handleDisconnectedNetwork(NetworkInfo networkInfo) {
-        Log.v(TAG, "Disconnected from network (" + networkInfo.getTypeName() + ")");
-        engineExecutor.execute(new Runnable() {
+    private void handleDisconnectedNetwork() {
+        if (!connected) {
+            return;
+        }
+        connected = false;
+
+        LOG.info("Disconnected from network");
+        Engine.instance().getThreadPool().execute(new Runnable() {
             @Override
             public void run() {
                 Engine.instance().stopServices(true);
@@ -139,6 +139,25 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
         });
     }
 
+    private void handleConnectedNetwork() {
+        if (connected) {
+            return;
+        }
+        connected = true;
+
+        LOG.info("Connected to " + NetworkManager.instance().getActiveNetworkInfo().getTypeName());
+        if (Engine.instance().isDisconnected()) {
+            Engine.instance().getThreadPool().execute(new Runnable() {
+                @Override
+                public void run() {
+                    Engine.instance().startServices();
+                }
+            });
+        }
+    }
+
+    // TODO:BITTORRENT
+    /*
     private void handleConnectedNetwork(NetworkInfo networkInfo) {
         if (NetworkManager.instance().isDataUp()) {
 
@@ -166,7 +185,7 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
             // mobile up means only mobile data is up and wifi is down.
 
             if (!NetworkManager.instance().isDataMobileUp() || useTorrentsOnMobileData) {
-                Log.v(TAG, "Connected to " + networkInfo.getTypeName());
+                LOG.info("Connected to " + networkInfo.getTypeName());
                 if (Engine.instance().isDisconnected()) {
                     // avoid ANR error inside a broadcast receiver
                     engineExecutor.execute(new Runnable() {
@@ -182,7 +201,7 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
                 }
             }
         }
-    }
+    }*/
 
     private void handleMediaMounted(final Context context, Intent intent) {
         try {
@@ -212,17 +231,18 @@ public class EngineBroadcastReceiver extends BroadcastReceiver {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * make sure the current save location will be the primary external if
      * the media being unmounted is the sd card.
+     *
      * @param context
      * @param intent
      */
     private void handleMediaUnmounted(Context context, Intent intent) {
         String path = intent.getDataString().replace("file://", "");
         if (!SystemUtils.isPrimaryExternalPath(new File(path)) &&
-            SystemUtils.isPrimaryExternalStorageMounted()) {
+                SystemUtils.isPrimaryExternalStorageMounted()) {
             File primaryExternal = Environment.getExternalStorageDirectory();
             ConfigurationManager.instance().setStoragePath(primaryExternal.getAbsolutePath());
         }
