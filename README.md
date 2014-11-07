@@ -78,3 +78,6 @@ Happy coding.
 
 If you want to know about legal content you can download and distribute legally please visit [FrostClick](http://frostclick.com), [VODO](http://vodo.net), ClearBits.net and [Creative Commons](http://creativecommons.org)
 
+# Licensing
+
+See the license (here)[here].
